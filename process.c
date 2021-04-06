@@ -12,7 +12,8 @@
 
 struct process_state {
 	unsigned int size;
-	unsigned int* sp;
+	unsigned int* curr_sp;
+	unsigned int* init_sp;
 	struct process_state* nextProcess;
 };
 
@@ -24,7 +25,9 @@ int process_create (void (*f)(void), int n) {
 	SIM->SCGC6 = SIM_SCGC6_PIT_MASK; // Enable clock to PIT module
 	PIT->MCR = (0 << 1); // Enable clock for MCR
 	// Disable Global interrupts
-	PIT->CHANNEL[0].TCTRL = 1;
+	uint32_t m;
+	m = __get_PRIMASK();
+	__disable_irq();
 
 
 	unsigned int * procPointer =  process_stack_init(*f, n);
@@ -34,8 +37,9 @@ int process_create (void (*f)(void), int n) {
 	} else {
 		//Initializes the process to be added onto the linked list
 		process_t* elementPt;
-		elementPt = malloc(n*sizeof(process_t));
-		elementPt->sp = procPointer;
+		elementPt = malloc(sizeof(process_t));
+		elementPt->curr_sp = procPointer;
+		elementPt->init_sp = procPointer;
 		elementPt->nextProcess = NULL;
 		elementPt->size = n;
 
@@ -54,7 +58,7 @@ int process_create (void (*f)(void), int n) {
 		}
 
 		// Re-enable global interrupts
-		PIT->CHANNEL[0].TCTRL = 3;
+		__set_PRIMASK(m);
 
 		return 0;
 	}
@@ -62,12 +66,11 @@ int process_create (void (*f)(void), int n) {
 }
 
 void process_start(void) {
+	NVIC_EnableIRQ(PIT_IRQn);
 	SIM->SCGC6 = SIM_SCGC6_PIT_MASK; // Enable clock to PIT module
 	PIT->MCR = (0 << 1); // Enable clock for MCR
-	PIT->CHANNEL[0].LDVAL = 0xFFF00; // Set load value of zeroth PIT
+	PIT->CHANNEL[0].LDVAL = 0x0FF00; // Set load value of zeroth PIT
 	PIT->CHANNEL[0].TCTRL |= PIT_TCTRL_TIE_MASK; // Enable timer for interrupts
-	NVIC_EnableIRQ(PIT_IRQn);
-	if(process_queue == NULL) { return; }
 	process_begin();
 }
 
@@ -76,20 +79,21 @@ unsigned int * process_select(unsigned int * cursp) {
 	if(process_queue == NULL) { return NULL; }
 	else if(current_process == NULL) {
 		current_process = process_queue;
-		return current_process->sp;
+		return current_process->curr_sp;
 	} else {
 		//if there is no stack pointer, then there is no process
 		if(cursp == NULL){
-			process_stack_free(current_process->sp, current_process->size);
 			free(current_process);
+			process_stack_free(current_process->init_sp, current_process->size);
 			//takes process off of queue by changing start
 			process_queue = current_process->nextProcess;
 		} else {
+			current_process->curr_sp = cursp;
 			//changes start of the list
 			process_queue = current_process->nextProcess;
 			//If the length of the list is 1 (next is NULL)
 			if(process_queue == NULL) {
-				current_process = process_queue;
+				process_queue = current_process;
 			} else {
 				//takes end of list and puts it at beginning
 				process_t* tempProcessPt;
@@ -98,7 +102,8 @@ unsigned int * process_select(unsigned int * cursp) {
 				}
 				tempProcessPt->nextProcess = current_process;
 			}
+			current_process->nextProcess = NULL;
 		}
 	}
-	return current_process->sp;
+	return current_process->curr_sp;
 }
