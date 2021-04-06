@@ -22,8 +22,6 @@ process_t* current_process = NULL;
 
 
 int process_create (void (*f)(void), int n) {
-	SIM->SCGC6 = SIM_SCGC6_PIT_MASK; // Enable clock to PIT module
-	PIT->MCR = (0 << 1); // Enable clock for MCR
 	// Disable Global interrupts
 	uint32_t m;
 	m = __get_PRIMASK();
@@ -96,7 +94,7 @@ unsigned int * process_select(unsigned int * cursp) {
 				process_queue = current_process;
 			} else {
 				//takes end of list and puts it at beginning
-				process_t* tempProcessPt;
+				process_t* tempProcessPt = process_queue;
 				while (tempProcessPt->nextProcess != NULL) {
 					tempProcessPt = tempProcessPt->nextProcess;
 				}
