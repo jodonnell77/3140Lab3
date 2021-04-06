@@ -23,7 +23,7 @@ void p2 (void)
 int main (void){
 
  LED_Initialize();
- 
+
  LEDBlue_On();
 
  if (process_create (p1,32) < 0) {
@@ -33,11 +33,11 @@ int main (void){
  if (process_create (p2,32) < 0) {
  	return -1;
  }
- 	
+
  process_start ();
- 
+
  LEDGreen_Toggle();
- 
+
  while (1) ;
 
  return 0;
