@@ -44,7 +44,6 @@ int process_create (void (*f)(void), int n) {
 		//Make this the only element of the list if the list is empty
 		if(process_queue == NULL) {
 			process_queue = elementPt;
-
 		} else {
 			//Create a temporary process state, and keep updating it until it is the last element
 			process_t* tempProcessPt;
@@ -72,36 +71,36 @@ void process_start(void) {
 	process_begin();
 }
 
-unsigned int * process_select(unsigned int * cursp) {
-	//check base cases
-	if(process_queue == NULL) { return NULL; }
-	else if(current_process == NULL) {
-		current_process = process_queue;
-		return current_process->curr_sp;
-	} else {
-		//if there is no stack pointer, then there is no process
-		if(cursp == NULL){
-			free(current_process);
-			process_stack_free(current_process->init_sp, current_process->size);
-			//takes process off of queue by changing start
-			process_queue = current_process->nextProcess;
-		} else {
-			current_process->curr_sp = cursp;
-			//changes start of the list
-			process_queue = current_process->nextProcess;
-			//If the length of the list is 1 (next is NULL)
-			if(process_queue == NULL) {
-				process_queue = current_process;
-			} else {
-				//takes end of list and puts it at beginning
+extern unsigned int * process_select (unsigned int * cursp) {
+
+	if (current_process != NULL) {
+		//Shifts the beginning of the linked list to one forward
+		process_queue = current_process->nextProcess;
+		//If a current stack pointer exists, change linked list
+		if (cursp != NULL) {
+
+			//If there was one element left in the linked list (current_process->nextProcess->nextProcess doesn't exist)
+			if (process_queue == NULL) { process_queue = current_process; }
+			else {
+				//Similar to process_create, reach end of linked list and append to it
 				process_t* tempProcessPt = process_queue;
-				while (tempProcessPt->nextProcess != NULL) {
-					tempProcessPt = tempProcessPt->nextProcess;
-				}
+				while (tempProcessPt->nextProcess != NULL ) { tempProcessPt = tempProcessPt->nextProcess; }
 				tempProcessPt->nextProcess = current_process;
 			}
+			//Updating fields for current process
+			current_process->curr_sp = cursp;
 			current_process->nextProcess = NULL;
+
+		} else {
+			//Free up memory for the stack, then for the current process
+			process_stack_free(current_process->init_sp, current_process->size);
+			free(current_process);
 		}
 	}
-	return current_process->curr_sp;
+	//If there is a beginning to the linked list, update current and return its stack pointer
+	if(process_queue != NULL) {
+		current_process = process_queue;
+		return  process_queue->curr_sp; }
+	//If there is no beginning to the linked list, then there is no current pointer.
+	return NULL;
 }
