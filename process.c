@@ -20,6 +20,13 @@ struct process_state {
 process_t* process_queue = NULL;
 process_t* current_process = NULL;
 
+process_t* get_last (process_t* startPt) {
+	//Given a start pointer, finds the last pointer of the linked list
+	while (startPt->nextProcess != NULL) {
+		startPt = startPt->nextProcess;
+	}
+	return startPt;
+}
 
 int process_create (void (*f)(void), int n) {
 	// Disable Global interrupts
@@ -46,11 +53,7 @@ int process_create (void (*f)(void), int n) {
 			process_queue = elementPt;
 		} else {
 			//Create a temporary process state, and keep updating it until it is the last element
-			process_t* tempProcessPt;
-			tempProcessPt = process_queue;
-			while (tempProcessPt->nextProcess != NULL) {
-				tempProcessPt = tempProcessPt->nextProcess;
-			}
+			process_t* tempProcessPt = get_last(process_queue);
 			tempProcessPt->nextProcess = elementPt;
 		}
 
@@ -83,8 +86,7 @@ extern unsigned int * process_select (unsigned int * cursp) {
 			if (process_queue == NULL) { process_queue = current_process; }
 			else {
 				//Similar to process_create, reach end of linked list and append to it
-				process_t* tempProcessPt = process_queue;
-				while (tempProcessPt->nextProcess != NULL ) { tempProcessPt = tempProcessPt->nextProcess; }
+				process_t* tempProcessPt = get_last(process_queue);
 				tempProcessPt->nextProcess = current_process;
 			}
 			//Updating fields for current process
